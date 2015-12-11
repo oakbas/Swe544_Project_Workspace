@@ -37,7 +37,7 @@ class ReadThread (threading.Thread):
             self.csock.send(response)
             return
 
-        rest = data[4:] #get the rest of the message, no problem even if data < 4
+        rest = data[4:]     #get the rest of the message, no problem even if data < 4
 
         #The case, communication ends
         if data[0:3] == "BYE":
@@ -132,3 +132,37 @@ class ReadThread (threading.Thread):
     def run(self):
         while True:
             data = self.csoc.recv(1024)
+            #ToDo it is just sceletal code
+
+# Class Name: WriteThread
+# Description : This class for writing messages comes from GUI, to the socket
+class WriteThread (threading.Thread):
+    def __init__(self, name, csoc, threadQueue):
+        threading.Thread.__init__(self)
+        self.name = name
+        self.csoc = csoc
+        self.threadQueue = threadQueue
+    def run(self):
+        if self.threadQueue.qsize() > 0:
+            queue_message = self.threadQueue.get()
+            #ToDo it is just sceletal code
+            try:
+                self.csoc.send(queue_message)
+            except socket.error:
+                self.csoc.close()
+                #break
+
+class ClientDialog():
+    #ToDO: GUI part will be implemented after Qt installation
+    def outgoing_parser(self):
+        #ToDo: Implement GUI data to outgoing parser
+        data = self.sender.text()
+        if len(data) == 0:
+            return
+
+# Connect to the server
+s = socket.socket()
+host = "178.233.19.205"
+port = 12345
+s.connect((host,port))
+print s.recv(1024)      #To check server connection will be deleted
