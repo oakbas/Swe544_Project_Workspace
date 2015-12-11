@@ -23,6 +23,7 @@ class ReadThread (threading.Thread):
 
     def incoming_parser(self, data):
         #ToDo: Implement Client Incoming Parser
+        #TODO screen queue
 
         #The case, message has less than three-character length
         if len(data) < 3:
@@ -37,6 +38,83 @@ class ReadThread (threading.Thread):
             return
 
         rest = data[4:] #get the rest of the message, no problem even if data < 4
+
+        #The case, communication ends
+        if data[0:3] == "BYE":
+            if len(rest) == 0:
+                response = "ERR"
+                screenMsg = "Wrong message format from the server"
+                return
+            #ToDo: Check the registered user name in rest data
+            screenMsg = "Good Bye " + rest
+
+        #The case, registration
+        if data[0:3] == "HEL":
+            if len(rest) == 0:
+                response = "ERR"
+                screenMsg = "Wrong message format from the server"
+                return
+            #ToDo: Check the reg,stered user name is true
+            screenMsg = "Registered as" + rest
+            #ToDo: screenMsg2 = rest + " has joined", this part will be implemented
+
+        #The case, user registration is rejected
+        if data[0:3] == "REJ":
+            if len(rest) == 0:
+                response = "ERR"
+                screenMsg = "Wrong message format from the server"
+                return
+            screenMsg = "Invalid or existing nickname " + rest
+
+        #The case, user is not authenticated
+        if data[0:3] == "ERL":
+            if len(rest) > 0:
+                response = "ERR"
+                screenMsg = "Wrong message format from server"
+                return
+            screenMsg = 'User is not authenticated, please type /nick <user>'
+
+        #The case, receiver is invalid
+        if data[0:3] == "MNO":
+            if len(rest) == 0:
+                response = "ERR"
+                screenMsg = "Wrong message format from server"
+                return
+            screenMsg = "Invalid user " + rest
+
+        #The case, there is incoming message
+        if data[0:3] == "MSG":
+            if len(rest) == 0:
+                response = "ERR"
+                screenMsg = "Wrong message format from server"
+                return
+            splitted = rest.split(":")
+            if len(splitted) != 2:
+                response = "ERR"
+                screenMsg = "Wrong message format from server"
+                return
+            user = splitted[0]
+            msg = splitted[1]
+            screenMsg = "*" + user + "*: " + msg
+            response = "MOK"
+
+        #The case, general message is received
+        if data[0:3] == "SAY":
+            if len(rest) == 0:
+                response = "ERR"
+                screenMsg = "Wrong message format from server"
+                return
+            screenMsg = "General message: " + rest
+            response = "SOK"
+
+        #The case, message is received from server
+        if data[0:3] == "SYS":
+            if len(rest) == 0:
+                response = "ERR"
+                screenMsg = "Wrong message format from server"
+                return
+            screenMsg = "-Server: " + rest
+            response = "YOK"
 
     def run(self):
         while True:
