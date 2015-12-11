@@ -23,8 +23,21 @@ class ReadThread (threading.Thread):
 
     def incoming_parser(self, data):
         #ToDo: Implement Client Incoming Parser
-        if len(data) == 0:
+
+        #The case, message has less than three-character length
+        if len(data) < 3:
+            response = "ERR"
+            self.csock.send(response)
             return
+
+        #The case, command root is more than three characters
+        if len(data) > 3 and not data[3] == " ":
+            response  = "ERR"
+            self.csock.send(response)
+            return
+
+        rest = data[4:] #get the rest of the message, no problem even if data < 4
+
     def run(self):
         while True:
             data = self.csoc.recv(1024)
