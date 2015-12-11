@@ -55,7 +55,7 @@ class ReadThread (threading.Thread):
                 screenMsg = "Wrong message format from the server"
                 return
             #ToDo: Check the reg,stered user name is true
-            screenMsg = "Registered as" + rest
+            screenMsg = "-Server- Registered as" + rest
             #ToDo: screenMsg2 = rest + " has joined", this part will be implemented
 
         #The case, user registration is rejected
@@ -115,6 +115,19 @@ class ReadThread (threading.Thread):
                 return
             screenMsg = "-Server: " + rest
             response = "YOK"
+
+        #The case, registered nicks are listed
+        if data[0:3] == "LSA":
+            if len(rest) == 0:
+                response = "ERR"
+                screenMsg = "Wrong message format from server"
+                return
+            splitted = rest.split(":")
+            msg = "-Server- Registered nicks: "
+
+            for i in splitted:
+                msg += i + ","
+            msg = msg[:-1]
 
     def run(self):
         while True:
