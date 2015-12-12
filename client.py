@@ -5,6 +5,8 @@
 import sys
 import socket
 import threading
+from PyQt4.QtCore import *
+from PyQt4beyh.QtGui import *
 import Queue
 import time
 
@@ -54,9 +56,8 @@ class ReadThread (threading.Thread):
                 response = "ERR"
                 screenMsg = "Wrong message format from the server"
                 return
-            #ToDo: Check the reg,stered user name is true
-            screenMsg = "-Server- Registered as" + rest
-            #ToDo: screenMsg2 = rest + " has joined", this part will be implemented
+            #ToDo: Check the registered user name is true
+            screenMsg = "screenMsg = "Registered as" + rest"
 
         #The case, user registration is rejected
         if data[0:3] == "REJ":
