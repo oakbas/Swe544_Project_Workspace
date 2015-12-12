@@ -5,8 +5,8 @@
 import sys
 import socket
 import threading
-from PyQt4.QtCore import *
-from PyQt4beyh.QtGui import *
+#from PyQt4.QtCore import *
+#from PyQt4beyh.QtGui import *
 import Queue
 import time
 
@@ -57,7 +57,7 @@ class ReadThread (threading.Thread):
                 screenMsg = "Wrong message format from the server"
                 return
             #ToDo: Check the registered user name is true
-            screenMsg = "screenMsg = "Registered as" + rest"
+            screenMsg = "Registered as" + rest
 
         #The case, user registration is rejected
         if data[0:3] == "REJ":
@@ -154,12 +154,50 @@ class WriteThread (threading.Thread):
                 #break
 
 class ClientDialog():
+
+    def __init__(self, threadQueue, screenQueue):
+        self.threadQueue = threadQueue
+        self.screenQueue = screenQueue
+
     #ToDO: GUI part will be implemented after Qt installation
     def outgoing_parser(self):
         #ToDo: Implement GUI data to outgoing parser
         data = self.sender.text()
         if len(data) == 0:
             return
+        if data[0] == "/":
+            command = data[1:]
+
+            #The case, request for registered users
+            if command == "list":
+                self.threadQueue.put = "LSQ"
+
+            #The case, request for exit
+            elif command == "quit":
+                self.threadQueue.put = "QUI"
+
+            #The case, request for private message
+            elif command == "msg":
+                rest = data[5:]
+                splitted = rest.split(" ")
+
+                #Check username and msg is written by space separated
+                if len(splitted) != 2:
+                    self.cprint("Local: Command Error.")
+                    return
+                user = splitted[0]
+                msg = splitted[1]
+
+                self.threadQueue.put = "MSG " + user + ":" + msg
+            #The case, there is not meaningful comment after / parameter
+            else:
+                self.cprint("Local: Command Error.")
+                return
+
+        #The case, request for general message
+        else:
+            self.threadQueue.put("SAY " + data)
+        self.sender.clear()
 
 # Connect to the server
 s = socket.socket()
