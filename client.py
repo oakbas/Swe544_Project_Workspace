@@ -15,7 +15,6 @@ import datetime
 # Description : This class for processing the incoming messages to the socket and
 #               deriving user friendly information from the incoming messages
 class ReadThread (threading.Thread):
-    #ToDo handle socket close by remote
     def __init__(self, name, condition, csoc, threadQueue, screenQueue, userQueue):
         threading.Thread.__init__(self)
         self.name = name
@@ -56,7 +55,6 @@ class ReadThread (threading.Thread):
                 screenMsg = "Wrong message format from the server"
                 self.screenQueue.put(screenMsg)
                 return
-            #ToDo: Check the registered user name in rest data
             screenMsg = "Good Bye " + rest
             self.screenQueue.put(screenMsg)
 
@@ -70,7 +68,6 @@ class ReadThread (threading.Thread):
                 screenMsg = "Wrong message format from the server"
                 self.screenQueue.put(screenMsg)
                 return
-            #ToDo: Check the registered user name is true
             self.isRegisteredFlag = 1
             self.nickname = rest
             screenMsg = "Registered as " + rest
@@ -215,7 +212,6 @@ class ReadThread (threading.Thread):
         while True:
             data = self.csoc.recv(1024)
             self.incoming_parser(data)
-            #ToDo add lock
 
 # Class Name: WriteThread
 # Description : This class for writing messages comes from GUI, to the socket
@@ -332,9 +328,7 @@ class ClientDialog(QDialog):
         self.userList.setModel(model)
         self.userList.show()
 
-    #ToDO: GUI part will be implemented after Qt installation
     def outgoing_parser(self):
-        #ToDo: Implement GUI data to outgoing parser
         data = self.sender.text()
 
         if len(data) == 0:
@@ -413,5 +407,4 @@ app.run()
 rt.join()
 wt.join()
 
-#Close button will be added to close socket and threads
-#s.close()
+s.close()
