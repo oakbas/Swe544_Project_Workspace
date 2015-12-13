@@ -16,7 +16,7 @@ import datetime
 #               deriving user friendly information from the incoming messages
 class ReadThread (threading.Thread):
     #ToDo handle socket close by remote
-    def __init__(self, name, csoc, threadQueue, screenQueue, userQueue):
+    def __init__(self, name, condition, csoc, threadQueue, screenQueue, userQueue):
         threading.Thread.__init__(self)
         self.name = name
         self.csoc = csoc
@@ -24,6 +24,7 @@ class ReadThread (threading.Thread):
         self.threadQueue = threadQueue
         self.screenQueue = screenQueue
         self.isRegisteredFlag = 0
+        self.condition = condition
 
     def incoming_parser(self, data):
         print (data)
@@ -67,6 +68,7 @@ class ReadThread (threading.Thread):
                 return
             #ToDo: Check the registered user name is true
             self.isRegisteredFlag = 1
+            self.nickname = rest
             screenMsg = "Registered as " + rest
             self.screenQueue.put(screenMsg)
 
@@ -135,7 +137,8 @@ class ReadThread (threading.Thread):
                 return
             response = "SOK"
             self.csoc.send(response)
-            screenMsg = "General message: " + rest
+            splitted = rest.split(":")
+            screenMsg = "<" + splitted[0] + "> " + splitted[1]
             self.screenQueue.put(screenMsg)
 
         #The case, message is received from server
@@ -183,13 +186,16 @@ class ReadThread (threading.Thread):
 # Class Name: WriteThread
 # Description : This class for writing messages comes from GUI, to the socket
 class WriteThread (threading.Thread):
-    def __init__(self, name, csoc, threadQueue):
+    def __init__(self, name, condition, csoc, threadQueue):
         threading.Thread.__init__(self)
         self.name = name
         self.csoc = csoc
         self.threadQueue = threadQueue
+        self.condition = condition
+
     def run(self):
         while True:
+            condition.acquire()
             if self.threadQueue.qsize() > 0:
                 queue_message = self.threadQueue.get()
                 try:
@@ -199,13 +205,17 @@ class WriteThread (threading.Thread):
                 except socket.error:
                     self.csoc.close()
                     break
+            else:
+                condition.wait()
+            condition.release()
 
 class ClientDialog(QDialog):
 
-    def __init__(self, threadQueue, screenQueue, userQueue):
+    def __init__(self, condition, threadQueue, screenQueue, userQueue):
         self.threadQueue = threadQueue
         self.screenQueue = screenQueue
         self.userQueue = userQueue
+        self.condition = condition
 
         # create a Qt application --- every PyQt app needs one
         self.qt_app = QApplication(sys.argv)
@@ -335,6 +345,9 @@ class ClientDialog(QDialog):
         else:
             self.threadQueue.put("SAY " + data)
 
+        condition.acquire()
+        condition.notify_all()
+        condition.release()
         self.sender.clear()
 
     #Run the app and show the main form
@@ -353,12 +366,13 @@ sendQueue = Queue.Queue()
 screenQueue = Queue.Queue()
 userQueue = Queue.Queue()
 
+condition = threading.Condition()
 
-app = ClientDialog(sendQueue, screenQueue, userQueue)
+app = ClientDialog(condition, sendQueue, screenQueue, userQueue)
 # start threads
-rt = ReadThread("ReadThread", s, sendQueue, screenQueue, userQueue)
+rt = ReadThread("ReadThread", condition, s, sendQueue, screenQueue, userQueue)
 rt.start()
-wt = WriteThread("WriteThread", s, sendQueue)
+wt = WriteThread("WriteThread", condition, s, sendQueue)
 wt.start()
 
 app.run()
