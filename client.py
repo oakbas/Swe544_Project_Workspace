@@ -45,90 +45,122 @@ class ReadThread (threading.Thread):
         if data[0:3] == "BYE":
             if len(rest) == 0:
                 response = "ERR"
+                self.csock.send(response)
                 screenMsg = "Wrong message format from the server"
+                self.screenQueue.put(screenMsg)
                 return
             #ToDo: Check the registered user name in rest data
             screenMsg = "Good Bye " + rest
+            self.screenQueue.put(screenMsg)
 
         #The case, registration
         if data[0:3] == "HEL":
             if len(rest) == 0:
                 response = "ERR"
+                self.csock.send(response)
                 screenMsg = "Wrong message format from the server"
+                self.screenQueue.put(screenMsg)
                 return
             #ToDo: Check the registered user name is true
             screenMsg = "Registered as" + rest
+            self.screenQueue.put(screenMsg)
 
         #The case, user registration is rejected
         if data[0:3] == "REJ":
             if len(rest) == 0:
                 response = "ERR"
+                self.csock.send(response)
                 screenMsg = "Wrong message format from the server"
+                self.screenQueue.put(screenMsg)
                 return
             screenMsg = "Invalid or existing nickname " + rest
+            self.screenQueue.put(screenMsg)
 
         #The case, user is not authenticated
         if data[0:3] == "ERL":
             if len(rest) > 0:
                 response = "ERR"
+                self.csock.send(response)
                 screenMsg = "Wrong message format from server"
+                self.screenQueue.put(screenMsg)
                 return
             screenMsg = 'User is not authenticated, please type /nick <user>'
+            self.screenQueue.put(screenMsg)
 
         #The case, receiver is invalid
         if data[0:3] == "MNO":
             if len(rest) == 0:
                 response = "ERR"
+                self.csock.send(response)
                 screenMsg = "Wrong message format from server"
+                self.screenQueue.put(screenMsg)
                 return
             screenMsg = "Invalid user " + rest
+            self.screenQueue.put(screenMsg)
 
         #The case, there is incoming message
         if data[0:3] == "MSG":
             if len(rest) == 0:
                 response = "ERR"
+                self.csock.send(response)
                 screenMsg = "Wrong message format from server"
+                self.screenQueue.put(screenMsg)
                 return
             splitted = rest.split(":")
             if len(splitted) != 2:
                 response = "ERR"
+                self.csock.send(response)
                 screenMsg = "Wrong message format from server"
+                self.screenQueue.put(screenMsg)
                 return
             user = splitted[0]
             msg = splitted[1]
-            screenMsg = "*" + user + "*: " + msg
             response = "MOK"
+            self.csock.send(response)
+            screenMsg = "*" + user + "*: " + msg
+            self.screenQueue.put(screenMsg)
 
         #The case, general message is received
         if data[0:3] == "SAY":
             if len(rest) == 0:
                 response = "ERR"
+                self.csock.send(response)
                 screenMsg = "Wrong message format from server"
+                self.screenQueue.put(screenMsg)
                 return
-            screenMsg = "General message: " + rest
             response = "SOK"
+            self.csock.send(response)
+            screenMsg = "General message: " + rest
+            self.screenQueue.put(screenMsg)
 
         #The case, message is received from server
         if data[0:3] == "SYS":
             if len(rest) == 0:
                 response = "ERR"
+                self.csock.send(response)
                 screenMsg = "Wrong message format from server"
+                self.screenQueue.put(screenMsg)
                 return
-            screenMsg = "-Server: " + rest
             response = "YOK"
+            self.csock.send(response)
+            screenMsg = "-Server: " + rest
+            self.screenQueue.put(screenMsg)
 
         #The case, registered nicks are listed
         if data[0:3] == "LSA":
             if len(rest) == 0:
                 response = "ERR"
+                self.csock.send(response)
                 screenMsg = "Wrong message format from server"
+                self.screenQueue.put(screenMsg)
                 return
             splitted = rest.split(":")
-            msg = "-Server- Registered nicks: "
+            screenMsg = "-Server- Registered nicks: "
 
             for i in splitted:
-                msg += i + ","
-            msg = msg[:-1]
+                screenMsg += i + ","
+            screenMsg = screenMsg[:-1]
+            self.screenQueue.put(screenMsg)
 
     def run(self):
         while True:
@@ -144,14 +176,15 @@ class WriteThread (threading.Thread):
         self.csoc = csoc
         self.threadQueue = threadQueue
     def run(self):
-        if self.threadQueue.qsize() > 0:
-            queue_message = self.threadQueue.get()
-            #ToDo it is just sceletal code
-            try:
-                self.csoc.send(queue_message)
-            except socket.error:
-                self.csoc.close()
-                #break
+        while True:
+            if self.threadQueue.qsize() > 0:
+                queue_message = self.threadQueue.get()
+                #ToDo it is just sceletal code
+                try:
+                    self.csoc.send(queue_message)
+                except socket.error:
+                    self.csoc.close()
+                    break
 
 class ClientDialog(QDialog):
 
@@ -213,50 +246,58 @@ class ClientDialog(QDialog):
     def cprint(self, data):
         self.channel.append(data)
 
-
     def updateChannelWindow(self):
         if self.screenQueue.qsize() > 0:
             queue_message = self.screenQueue.get()
-            # self.channel.append(...)
+            self.channel.append(queue_message)
 
     #ToDO: GUI part will be implemented after Qt installation
     def outgoing_parser(self):
         #ToDo: Implement GUI data to outgoing parser
         data = self.sender.text()
+
         if len(data) == 0:
             return
+
         if data[0] == "/":
-            command = data[1:]
+            rest = data[1:].split(" ")
+            command = rest[0]
+
+            #The case, request for user registration
+            if command == "nick":
+                if rest[1]:
+                    self.threadQueue.put("USR " + rest[1])
+                else:
+                    self.cprint("Local: Command Error.")
 
             #The case, request for registered users
-            if command == "list":
-                self.threadQueue.put = "LSQ"
+            elif command == "list":
+                self.threadQueue.put("LSQ")
 
             #The case, request for exit
             elif command == "quit":
-                self.threadQueue.put = "QUI"
+                self.threadQueue.put("QUI")
 
             #The case, request for private message
             elif command == "msg":
-                rest = data[5:]
-                splitted = rest.split(" ")
 
                 #Check username and msg is written by space separated
-                if len(splitted) != 2:
+                if rest[1] and rest[2]:
+                    user = rest[1]
+                    msg = rest[2:]
+                    msg = " ".join(msg)
+                    self.threadQueue.put("MSG " + user + ":" + msg)
+                else:
                     self.cprint("Local: Command Error.")
-                    return
-                user = splitted[0]
-                msg = splitted[1]
 
-                self.threadQueue.put = "MSG " + user + ":" + msg
             #The case, there is not meaningful comment after / parameter
             else:
                 self.cprint("Local: Command Error.")
-                return
 
         #The case, request for general message
         else:
             self.threadQueue.put("SAY " + data)
+
         self.sender.clear()
 
     #Run the app and show the main form
@@ -274,4 +315,17 @@ print s.recv(1024)      #To check server connection will be deleted
 sendQueue = Queue.Queue()
 screenQueue = Queue.Queue()
 app = ClientDialog(sendQueue, screenQueue)
+
+# start threads
+rt = ReadThread("ReadThread", s, sendQueue, screenQueue)
+rt.start()
+wt = WriteThread("WriteThread", s, sendQueue)
+wt.start()
+
 app.run()
+
+rt.join()
+wt.join()
+
+#Close button will be added to close socket and threads
+#s.close()
