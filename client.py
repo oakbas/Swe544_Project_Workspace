@@ -27,7 +27,6 @@ class ReadThread (threading.Thread):
         self.condition = condition
 
     def incoming_parser(self, data):
-        print (data)
 
         #The case, message has less than three-character length
         if len(data) < 3:
@@ -46,9 +45,6 @@ class ReadThread (threading.Thread):
             return
 
         rest = data[4:]     #get the rest of the message, no problem even if data < 4
-
-        if data[0:3] == "ERR":
-            print ("test")
 
         #The case, communication ends
         if data[0:3] == "BYE":
@@ -205,6 +201,9 @@ class ReadThread (threading.Thread):
             screenMsg = screenMsg[:-1]
             self.screenQueue.put(screenMsg)
 
+        elif data[0:3] == "ERR":
+            return
+
         elif data[0:3] == "TIC":
             if self.isRegisteredFlag:
                 response = "TOC"
@@ -235,7 +234,6 @@ class WriteThread (threading.Thread):
                 queue_message = self.threadQueue.get()
                 try:
                     temp = str(queue_message)
-                    print("      " + temp)
                     self.csoc.send(str(queue_message))
                 except socket.error:
                     self.csoc.close()
