@@ -24,19 +24,18 @@ class ReadThread (threading.Thread):
         self.screenQueue = screenQueue
 
     def incoming_parser(self, data):
-        #ToDo: Implement Client Incoming Parser
-        #TODO screen queue
+        print (data)
 
         #The case, message has less than three-character length
         if len(data) < 3:
             response = "ERR"
-            self.csock.send(response)
+            self.csoc.send(response)
             return
 
         #The case, command root is more than three characters
         if len(data) > 3 and not data[3] == " ":
-            response  = "ERR"
-            self.csock.send(response)
+            response = "ERR"
+            self.csoc.send(response)
             return
 
         rest = data[4:]     #get the rest of the message, no problem even if data < 4
@@ -45,7 +44,7 @@ class ReadThread (threading.Thread):
         if data[0:3] == "BYE":
             if len(rest) == 0:
                 response = "ERR"
-                self.csock.send(response)
+                self.csoc.send(response)
                 screenMsg = "Wrong message format from the server"
                 self.screenQueue.put(screenMsg)
                 return
@@ -57,7 +56,7 @@ class ReadThread (threading.Thread):
         if data[0:3] == "HEL":
             if len(rest) == 0:
                 response = "ERR"
-                self.csock.send(response)
+                self.csoc.send(response)
                 screenMsg = "Wrong message format from the server"
                 self.screenQueue.put(screenMsg)
                 return
@@ -69,7 +68,7 @@ class ReadThread (threading.Thread):
         if data[0:3] == "REJ":
             if len(rest) == 0:
                 response = "ERR"
-                self.csock.send(response)
+                self.csoc.send(response)
                 screenMsg = "Wrong message format from the server"
                 self.screenQueue.put(screenMsg)
                 return
@@ -80,18 +79,18 @@ class ReadThread (threading.Thread):
         if data[0:3] == "ERL":
             if len(rest) > 0:
                 response = "ERR"
-                self.csock.send(response)
+                self.csoc.send(response)
                 screenMsg = "Wrong message format from server"
                 self.screenQueue.put(screenMsg)
                 return
-            screenMsg = 'User is not authenticated, please type /nick <user>'
+            screenMsg = "User is not authenticated, please type /nick <user>"
             self.screenQueue.put(screenMsg)
 
         #The case, receiver is invalid
         if data[0:3] == "MNO":
             if len(rest) == 0:
                 response = "ERR"
-                self.csock.send(response)
+                self.csoc.send(response)
                 screenMsg = "Wrong message format from server"
                 self.screenQueue.put(screenMsg)
                 return
@@ -102,21 +101,21 @@ class ReadThread (threading.Thread):
         if data[0:3] == "MSG":
             if len(rest) == 0:
                 response = "ERR"
-                self.csock.send(response)
+                self.csoc.send(response)
                 screenMsg = "Wrong message format from server"
                 self.screenQueue.put(screenMsg)
                 return
             splitted = rest.split(":")
             if len(splitted) != 2:
                 response = "ERR"
-                self.csock.send(response)
+                self.csoc.send(response)
                 screenMsg = "Wrong message format from server"
                 self.screenQueue.put(screenMsg)
                 return
             user = splitted[0]
             msg = splitted[1]
             response = "MOK"
-            self.csock.send(response)
+            self.csoc.send(response)
             screenMsg = "*" + user + "*: " + msg
             self.screenQueue.put(screenMsg)
 
@@ -124,12 +123,12 @@ class ReadThread (threading.Thread):
         if data[0:3] == "SAY":
             if len(rest) == 0:
                 response = "ERR"
-                self.csock.send(response)
+                self.csoc.send(response)
                 screenMsg = "Wrong message format from server"
                 self.screenQueue.put(screenMsg)
                 return
             response = "SOK"
-            self.csock.send(response)
+            self.csoc.send(response)
             screenMsg = "General message: " + rest
             self.screenQueue.put(screenMsg)
 
@@ -137,12 +136,12 @@ class ReadThread (threading.Thread):
         if data[0:3] == "SYS":
             if len(rest) == 0:
                 response = "ERR"
-                self.csock.send(response)
+                self.csoc.send(response)
                 screenMsg = "Wrong message format from server"
                 self.screenQueue.put(screenMsg)
                 return
             response = "YOK"
-            self.csock.send(response)
+            self.csoc.send(response)
             screenMsg = "-Server: " + rest
             self.screenQueue.put(screenMsg)
 
@@ -150,7 +149,7 @@ class ReadThread (threading.Thread):
         if data[0:3] == "LSA":
             if len(rest) == 0:
                 response = "ERR"
-                self.csock.send(response)
+                self.csoc.send(response)
                 screenMsg = "Wrong message format from server"
                 self.screenQueue.put(screenMsg)
                 return
@@ -165,7 +164,8 @@ class ReadThread (threading.Thread):
     def run(self):
         while True:
             data = self.csoc.recv(1024)
-            #ToDo it is just sceletal code
+            self.incoming_parser(data)
+            #ToDo add lock
 
 # Class Name: WriteThread
 # Description : This class for writing messages comes from GUI, to the socket
@@ -179,9 +179,8 @@ class WriteThread (threading.Thread):
         while True:
             if self.threadQueue.qsize() > 0:
                 queue_message = self.threadQueue.get()
-                #ToDo it is just sceletal code
                 try:
-                    self.csoc.send(queue_message)
+                    self.csoc.send(str(queue_message))
                 except socket.error:
                     self.csoc.close()
                     break
@@ -312,10 +311,11 @@ port = 12345
 s.connect((host,port))
 print s.recv(1024)      #To check server connection will be deleted
 
+threadLock = threading.Lock()
 sendQueue = Queue.Queue()
 screenQueue = Queue.Queue()
-app = ClientDialog(sendQueue, screenQueue)
 
+app = ClientDialog(sendQueue, screenQueue)
 # start threads
 rt = ReadThread("ReadThread", s, sendQueue, screenQueue)
 rt.start()
