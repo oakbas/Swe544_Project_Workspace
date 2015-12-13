@@ -8,14 +8,15 @@ import threading
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 import Queue
-import time
+import datetime
 
 
 # Class Name: ReadThread
 # Description : This class for processing the incoming messages to the socket and
 #               deriving user friendly information from the incoming messages
 class ReadThread (threading.Thread):
-    def __init__(self, name, csoc, threadQueue, screenQueue):
+    #ToDo handle socket close by remote
+    def __init__(self, name, csoc, threadQueue, screenQueue, userQueue):
         threading.Thread.__init__(self)
         self.name = name
         self.csoc = csoc
@@ -29,16 +30,19 @@ class ReadThread (threading.Thread):
         #The case, message has less than three-character length
         if len(data) < 3:
             response = "ERR"
-            self.csoc.send(response)
+            #self.csoc.send(response)
             return
 
         #The case, command root is more than three characters
         if len(data) > 3 and not data[3] == " ":
             response = "ERR"
-            self.csoc.send(response)
+            #self.csoc.send(response)
             return
 
         rest = data[4:]     #get the rest of the message, no problem even if data < 4
+
+        if data[0:3] == "ERR":
+            print ("test")
 
         #The case, communication ends
         if data[0:3] == "BYE":
@@ -53,7 +57,7 @@ class ReadThread (threading.Thread):
             self.screenQueue.put(screenMsg)
 
         #The case, registration
-        if data[0:3] == "HEL":
+        elif data[0:3] == "HEL":
             if len(rest) == 0:
                 response = "ERR"
                 self.csoc.send(response)
@@ -61,11 +65,11 @@ class ReadThread (threading.Thread):
                 self.screenQueue.put(screenMsg)
                 return
             #ToDo: Check the registered user name is true
-            screenMsg = "Registered as" + rest
+            screenMsg = "Registered as " + rest
             self.screenQueue.put(screenMsg)
 
         #The case, user registration is rejected
-        if data[0:3] == "REJ":
+        elif data[0:3] == "REJ":
             if len(rest) == 0:
                 response = "ERR"
                 self.csoc.send(response)
@@ -76,7 +80,7 @@ class ReadThread (threading.Thread):
             self.screenQueue.put(screenMsg)
 
         #The case, user is not authenticated
-        if data[0:3] == "ERL":
+        elif data[0:3] == "ERL":
             if len(rest) > 0:
                 response = "ERR"
                 self.csoc.send(response)
@@ -87,7 +91,7 @@ class ReadThread (threading.Thread):
             self.screenQueue.put(screenMsg)
 
         #The case, receiver is invalid
-        if data[0:3] == "MNO":
+        elif data[0:3] == "MNO":
             if len(rest) == 0:
                 response = "ERR"
                 self.csoc.send(response)
@@ -98,7 +102,7 @@ class ReadThread (threading.Thread):
             self.screenQueue.put(screenMsg)
 
         #The case, there is incoming message
-        if data[0:3] == "MSG":
+        elif data[0:3] == "MSG":
             if len(rest) == 0:
                 response = "ERR"
                 self.csoc.send(response)
@@ -120,7 +124,7 @@ class ReadThread (threading.Thread):
             self.screenQueue.put(screenMsg)
 
         #The case, general message is received
-        if data[0:3] == "SAY":
+        elif data[0:3] == "SAY":
             if len(rest) == 0:
                 response = "ERR"
                 self.csoc.send(response)
@@ -133,10 +137,10 @@ class ReadThread (threading.Thread):
             self.screenQueue.put(screenMsg)
 
         #The case, message is received from server
-        if data[0:3] == "SYS":
+        elif data[0:3] == "SYS":
             if len(rest) == 0:
                 response = "ERR"
-                self.csoc.send(response)
+                #self.csoc.send(response)
                 screenMsg = "Wrong message format from server"
                 self.screenQueue.put(screenMsg)
                 return
@@ -146,7 +150,7 @@ class ReadThread (threading.Thread):
             self.screenQueue.put(screenMsg)
 
         #The case, registered nicks are listed
-        if data[0:3] == "LSA":
+        elif data[0:3] == "LSA":
             if len(rest) == 0:
                 response = "ERR"
                 self.csoc.send(response)
@@ -154,12 +158,18 @@ class ReadThread (threading.Thread):
                 self.screenQueue.put(screenMsg)
                 return
             splitted = rest.split(":")
+            userQueue.put(splitted)
             screenMsg = "-Server- Registered nicks: "
+
 
             for i in splitted:
                 screenMsg += i + ","
             screenMsg = screenMsg[:-1]
             self.screenQueue.put(screenMsg)
+
+        elif data[0:3] == "TIC":
+            response = "TOC"
+            self.csoc.send(response)
 
     def run(self):
         while True:
@@ -180,6 +190,8 @@ class WriteThread (threading.Thread):
             if self.threadQueue.qsize() > 0:
                 queue_message = self.threadQueue.get()
                 try:
+                    temp = str(queue_message)
+                    print("      " + temp)
                     self.csoc.send(str(queue_message))
                 except socket.error:
                     self.csoc.close()
@@ -187,9 +199,10 @@ class WriteThread (threading.Thread):
 
 class ClientDialog(QDialog):
 
-    def __init__(self, threadQueue, screenQueue):
+    def __init__(self, threadQueue, screenQueue, userQueue):
         self.threadQueue = threadQueue
         self.screenQueue = screenQueue
+        self.userQueue = userQueue
 
         # create a Qt application --- every PyQt app needs one
         self.qt_app = QApplication(sys.argv)
@@ -221,6 +234,8 @@ class ClientDialog(QDialog):
 
         # The users' section
         self.userList = QListView()
+        self.userList.setWindowTitle("User List")
+
 
         # Connect the Go button to its callback
         self.send_button.clicked.connect(self.outgoing_parser)
@@ -235,20 +250,41 @@ class ClientDialog(QDialog):
         # start timer
         self.timer = QTimer()
         self.timer.timeout.connect(self.updateChannelWindow)
+        self.timer2 = QTimer()
+        self.timer2.timeout.connect(self.updateUserList)
 
         # update every 10 ms
         self.timer.start(10)
+        self.timer2.start(10)
 
         # Use the vertical layout for the current window
         self.setLayout(self.vbox)
 
+    # use this to append new message to channel with timestamp
     def cprint(self, data):
-        self.channel.append(data)
+        now = datetime.datetime.strftime(datetime.datetime.now(), '%H:%M:%S')
+        channel_msg = now + " " + data
+        self.channel.append(channel_msg)
 
     def updateChannelWindow(self):
         if self.screenQueue.qsize() > 0:
             queue_message = self.screenQueue.get()
-            self.channel.append(queue_message)
+            self.cprint(queue_message)
+
+    def updateUserList(self):
+        if self.userQueue.qsize() > 0:
+            queue_message = self.userQueue.get()
+            self.uprint(queue_message)
+
+    def uprint(self, userlist):
+        model = QStandardItemModel(self.userList)
+
+        for user in userlist:
+            item = QStandardItem(str(user))
+            model.appendRow(item)
+
+        self.userList.setModel(model)
+        self.userList.show()
 
     #ToDO: GUI part will be implemented after Qt installation
     def outgoing_parser(self):
@@ -283,8 +319,7 @@ class ClientDialog(QDialog):
                 #Check username and msg is written by space separated
                 if rest[1] and rest[2]:
                     user = rest[1]
-                    msg = rest[2:]
-                    msg = " ".join(msg)
+                    msg = data[5:]
                     self.threadQueue.put("MSG " + user + ":" + msg)
                 else:
                     self.cprint("Local: Command Error.")
@@ -309,15 +344,16 @@ s = socket.socket()
 host = "178.233.19.205"
 port = 12345
 s.connect((host,port))
-print s.recv(1024)      #To check server connection will be deleted
 
 threadLock = threading.Lock()
 sendQueue = Queue.Queue()
 screenQueue = Queue.Queue()
+userQueue = Queue.Queue()
 
-app = ClientDialog(sendQueue, screenQueue)
+
+app = ClientDialog(sendQueue, screenQueue, userQueue)
 # start threads
-rt = ReadThread("ReadThread", s, sendQueue, screenQueue)
+rt = ReadThread("ReadThread", s, sendQueue, screenQueue, userQueue)
 rt.start()
 wt = WriteThread("WriteThread", s, sendQueue)
 wt.start()
