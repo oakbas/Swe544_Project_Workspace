@@ -121,10 +121,13 @@ class ReadThread (threading.Thread):
                 self.screenQueue.put(screenMsg)
                 return
             user = splitted[0]
-            msg = splitted[1]
+            usr_msg = splitted[1]
+            msg = usr_msg.split(" ")
+            msg = msg[1:]
+            outmsg = " ".join(msg)
             response = "MOK"
             self.csoc.send(response)
-            screenMsg = "*" + user + "*: " + msg
+            screenMsg = "*" + user + "*: " + str(outmsg)
             self.screenQueue.put(screenMsg)
 
         #The case, general message is received
