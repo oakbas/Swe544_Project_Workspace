@@ -23,6 +23,7 @@ class ReadThread (threading.Thread):
         self.nickname = ""
         self.threadQueue = threadQueue
         self.screenQueue = screenQueue
+        self.isRegisteredFlag = 0
 
     def incoming_parser(self, data):
         print (data)
@@ -65,6 +66,7 @@ class ReadThread (threading.Thread):
                 self.screenQueue.put(screenMsg)
                 return
             #ToDo: Check the registered user name is true
+            self.isRegisteredFlag = 1
             screenMsg = "Registered as " + rest
             self.screenQueue.put(screenMsg)
 
@@ -168,8 +170,9 @@ class ReadThread (threading.Thread):
             self.screenQueue.put(screenMsg)
 
         elif data[0:3] == "TIC":
-            response = "TOC"
-            self.csoc.send(response)
+            if self.isRegisteredFlag:
+                response = "TOC"
+                self.csoc.send(response)
 
     def run(self):
         while True:
