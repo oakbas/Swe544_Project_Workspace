@@ -32,13 +32,17 @@ class ReadThread (threading.Thread):
         #The case, message has less than three-character length
         if len(data) < 3:
             response = "ERR"
-            #self.csoc.send(response)
+            condition.acquire()
+            self.csoc.send(response)
+            condition.release()
             return
 
         #The case, command root is more than three characters
         if len(data) > 3 and not data[3] == " ":
             response = "ERR"
-            #self.csoc.send(response)
+            condition.acquire()
+            self.csoc.send(response)
+            condition.release()
             return
 
         rest = data[4:]     #get the rest of the message, no problem even if data < 4
@@ -50,7 +54,9 @@ class ReadThread (threading.Thread):
         if data[0:3] == "BYE":
             if len(rest) == 0:
                 response = "ERR"
+                condition.acquire()
                 self.csoc.send(response)
+                condition.release()
                 screenMsg = "Wrong message format from the server"
                 self.screenQueue.put(screenMsg)
                 return
@@ -62,7 +68,9 @@ class ReadThread (threading.Thread):
         elif data[0:3] == "HEL":
             if len(rest) == 0:
                 response = "ERR"
+                condition.acquire()
                 self.csoc.send(response)
+                condition.release()
                 screenMsg = "Wrong message format from the server"
                 self.screenQueue.put(screenMsg)
                 return
@@ -76,7 +84,9 @@ class ReadThread (threading.Thread):
         elif data[0:3] == "REJ":
             if len(rest) == 0:
                 response = "ERR"
+                condition.acquire()
                 self.csoc.send(response)
+                condition.release()
                 screenMsg = "Wrong message format from the server"
                 self.screenQueue.put(screenMsg)
                 return
@@ -87,7 +97,9 @@ class ReadThread (threading.Thread):
         elif data[0:3] == "ERL":
             if len(rest) > 0:
                 response = "ERR"
+                condition.acquire()
                 self.csoc.send(response)
+                condition.release()
                 screenMsg = "Wrong message format from server"
                 self.screenQueue.put(screenMsg)
                 return
@@ -98,7 +110,9 @@ class ReadThread (threading.Thread):
         elif data[0:3] == "MNO":
             if len(rest) == 0:
                 response = "ERR"
+                condition.acquire()
                 self.csoc.send(response)
+                condition.release()
                 screenMsg = "Wrong message format from server"
                 self.screenQueue.put(screenMsg)
                 return
@@ -109,14 +123,18 @@ class ReadThread (threading.Thread):
         elif data[0:3] == "MSG":
             if len(rest) == 0:
                 response = "ERR"
+                condition.acquire()
                 self.csoc.send(response)
+                condition.release()
                 screenMsg = "Wrong message format from server"
                 self.screenQueue.put(screenMsg)
                 return
             splitted = rest.split(":")
             if len(splitted) != 2:
                 response = "ERR"
+                condition.acquire()
                 self.csoc.send(response)
+                condition.release()
                 screenMsg = "Wrong message format from server"
                 self.screenQueue.put(screenMsg)
                 return
@@ -126,7 +144,9 @@ class ReadThread (threading.Thread):
             msg = msg[1:]
             outmsg = " ".join(msg)
             response = "MOK"
+            condition.acquire()
             self.csoc.send(response)
+            condition.release()
             screenMsg = "*" + user + "*: " + str(outmsg)
             self.screenQueue.put(screenMsg)
 
@@ -134,12 +154,16 @@ class ReadThread (threading.Thread):
         elif data[0:3] == "SAY":
             if len(rest) == 0:
                 response = "ERR"
+                condition.acquire()
                 self.csoc.send(response)
+                condition.release()
                 screenMsg = "Wrong message format from server"
                 self.screenQueue.put(screenMsg)
                 return
             response = "SOK"
+            condition.acquire()
             self.csoc.send(response)
+            condition.release()
             splitted = rest.split(":")
             screenMsg = "<" + splitted[0] + "> " + splitted[1]
             self.screenQueue.put(screenMsg)
@@ -148,12 +172,16 @@ class ReadThread (threading.Thread):
         elif data[0:3] == "SYS":
             if len(rest) == 0:
                 response = "ERR"
-                #self.csoc.send(response)
+                condition.acquire()
+                self.csoc.send(response)
+                condition.release()
                 screenMsg = "Wrong message format from server"
                 self.screenQueue.put(screenMsg)
                 return
             response = "YOK"
+            condition.acquire()
             self.csoc.send(response)
+            condition.release()
             screenMsg = "-Server: " + rest
             self.screenQueue.put(screenMsg)
 
@@ -161,7 +189,9 @@ class ReadThread (threading.Thread):
         elif data[0:3] == "LSA":
             if len(rest) == 0:
                 response = "ERR"
+                condition.acquire()
                 self.csoc.send(response)
+                condition.release()
                 screenMsg = "Wrong message format from server"
                 self.screenQueue.put(screenMsg)
                 return
@@ -178,7 +208,9 @@ class ReadThread (threading.Thread):
         elif data[0:3] == "TIC":
             if self.isRegisteredFlag:
                 response = "TOC"
+                condition.acquire()
                 self.csoc.send(response)
+                condition.release()
 
     def run(self):
         while True:
